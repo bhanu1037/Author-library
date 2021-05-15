@@ -2,19 +2,9 @@ const express = require('express');
 const router = express.Router();
 const Book = require('../models/book');
 const Author = require('../models/author');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
-const uploadPath = path.join('public',Book.coverImageBasePath);
 //Allowed mime types
-const imageMimeTypes = ['image/jpeg','image/png','image/jpg','images/gif'];
-const upload = multer({
-    dest: uploadPath,
-    fileFilter: (req,file,callback)=>{
-        callback(null,imageMimeTypes.includes(file.mimetype));
-    }
-});
+ const imageMimeTypes = ['image/jpeg','image/png','image/jpg','images/gif'];
 
 
 //All Authors
@@ -46,22 +36,18 @@ router.get('/new', (req,res)=>{
 });
 
 //Create New Author
-router.post('/', upload.single('cover'),(req,res)=>{
-    const fileName = req.file != null ? req.file.filename : null;
+router.post('/',(req,res)=>{
     const book = new Book({
         title: req.body.title,
         author: req.body.author,
         publishDate: new Date(req.body.publishDate),
         pageCount: req.body.pageCount,
-        coverImageName: fileName,
         descripition: req.body.description
     });
+    saveCover(book,req.body.cover);
 
     book.save((err)=>{
         if(err){
-            if(book.coverImageName != null){
-                removeBookCover(book.coverImageName)
-            }
             renderNewPage(res,book,true);
         }else{
             res.redirect('/books');
@@ -69,11 +55,6 @@ router.post('/', upload.single('cover'),(req,res)=>{
     });
 });
 
-function removeBookCover(fileName){
-    fs.unlink(path.join(uploadPath,fileName),err=>{
-        if(err)console.error(err);
-    })
-}
 
 function renderNewPage(res,book,hasError = false){
     
@@ -92,10 +73,12 @@ function renderNewPage(res,book,hasError = false){
      });
     
 }
-
+function saveCover(book, coverEncoded) {
+    if (coverEncoded == null) return
+    const cover = JSON.parse(coverEncoded)
+    if (cover != null && imageMimeTypes.includes(cover.type)) {
+      book.coverImage = new Buffer.from(cover.data, 'base64')
+      book.coverImageType = cover.type
+    }
+  }
 module.exports = router;
-//Regular Expression is the way to search through a string of text.
-//Expersion : /cat/(flags)
-//text: the fat cat ran downw the street.
-//flags: i-case insensitive,g-global
-// Experssion: /e+/g   
